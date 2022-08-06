@@ -7,7 +7,7 @@ import {
 	folderHideShowSettings,
 	autoCleanUpSettingsOnCondition, shortcutsHideShow
 } from "./settings/style";
-import {folderSettings} from "./settings/interface";
+import {folderSettings, localHost} from "./settings/interface";
 import t from './i18n'
 
 export class MkdocsSettingsTab extends PluginSettingTab {
@@ -28,7 +28,33 @@ export class MkdocsSettingsTab extends PluginSettingTab {
 
 		containerEl.createEl('h1', {text: t('githubConfiguration') as string})
 		new Setting(containerEl)
+			.setName(t('exportingSettings') as string)
+			.setDesc(t('exportingDesc') as string)
+			.addDropdown((dropDown) => {
+				dropDown
+					.addOptions({
+						local : 'Local',
+						github: 'GitHub',
+					})
+					.setValue(this.plugin.settings.localFolder)
+					.onChange(async(value: string)=> {
+						this.plugin.settings.localFolder = value;
+						await this.plugin.saveSettings();
+						if (value === localHost.local) {
+							hideSettings(githubRepoSettings);
+							hideSettings(GithubUserName);
+							hideSettings(ghTokenSettings);
+						} else {
+							showSettings(githubRepoSettings);
+							showSettings(GithubUserName);
+							showSettings(ghTokenSettings);
+						}
+					})});
+
+
+		const githubRepoSettings = new Setting(containerEl)
 			.setName(t('repoName') as string)
+			.setClass('obs-git-publisher')
 			.setDesc(t('repoNameDesc') as string)
 			.addText((text) =>
 				text
@@ -39,8 +65,9 @@ export class MkdocsSettingsTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			)
-		new Setting(containerEl)
+		const GithubUserName = new Setting(containerEl)
 			.setName(t('githubUsername') as string)
+			.setClass('obs-git-publisher')
 			.setDesc(t('githubUsernameDesc') as string)
 			.addText((text) =>
 				text
@@ -59,9 +86,10 @@ export class MkdocsSettingsTab extends PluginSettingTab {
 				link.href = 'https://github.com/settings/tokens/new?scopes=repo,workflow'
 			})
 		})
-		new Setting(containerEl)
+		const ghTokenSettings = new Setting(containerEl)
 			.setName(t('githubToken') as string)
 			.setDesc(desc_ghToken)
+			.setClass('obs-git-publisher')
 			.addText((text) =>
 				text
 					.setPlaceholder('ghb-15457498545647987987112184')
@@ -438,5 +466,14 @@ export class MkdocsSettingsTab extends PluginSettingTab {
 		shortcutsHideShow(this.plugin.settings.autoCleanUp, autoCleanExcludedSettings)
 		shortcutsHideShow(this.plugin.settings.copyLink, baseLinkSettings)
 		shortcutsHideShow(this.plugin.settings.copyLink, pathRemover)
+		if (this.plugin.settings.localFolder === localHost.github) {
+			showSettings(GithubUserName);
+			showSettings(ghTokenSettings);
+			showSettings(githubRepoSettings);
+		} else {
+			hideSettings(GithubUserName);
+			hideSettings(ghTokenSettings);
+			hideSettings(githubRepoSettings);
+		}
 	}
 }

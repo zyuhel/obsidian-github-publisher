@@ -1,4 +1,7 @@
+import {TFile} from "obsidian";
+
 export interface MkdocsPublicationSettings {
+	localFolder: string;
 	githubRepo: string;
 	githubName: string;
 	GhToken: string;
@@ -29,6 +32,11 @@ export interface MkdocsPublicationSettings {
 	useFrontmatterTitle: boolean;
 }
 
+export enum localHost{
+	local='local',
+	github='github',
+}
+
 export enum folderSettings {
 	yaml = "yaml",
 	obsidian = "obsidian",
@@ -36,6 +44,7 @@ export enum folderSettings {
 }
 
 export const DEFAULT_SETTINGS: MkdocsPublicationSettings = {
+	localFolder: localHost.github,
 	githubRepo: '',
 	githubName: '',
 	GhToken: '',
@@ -67,4 +76,20 @@ export const DEFAULT_SETTINGS: MkdocsPublicationSettings = {
 	logNotice: false,
 	convertDataview: true,
 	useFrontmatterTitle: false,
+}
+
+export interface LinkedFiles {
+	linked: TFile,
+	linkFrom: string,
+	altText: string
+}
+
+export interface AllFilePath{
+	converted: string,
+	real: string
+}
+
+export interface GithubShared{
+	file: string,
+	sha: string
 }

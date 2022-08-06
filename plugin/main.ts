@@ -1,9 +1,9 @@
-import {Plugin, TFile, Menu} from "obsidian";
+import {Plugin, TFile, Menu, Notice} from "obsidian";
 import {
 	MkdocsSettingsTab,
 } from "./settings";
 import { disablePublish } from "./src/utils";
-import {MkdocsPublicationSettings, DEFAULT_SETTINGS} from './settings/interface'
+import {MkdocsPublicationSettings, DEFAULT_SETTINGS, localHost} from './settings/interface'
 import {GithubBranch} from "./publishing/branch";
 import { Octokit } from "@octokit/core";
 import {
@@ -12,7 +12,7 @@ import {
 	shareAllMarkedNotes,
 	shareNewNote,
 	shareOneNote, shareOnlyEdited
-} from "./src/commands";
+} from "./commands";
 import t, {StringFunc} from "./i18n"
 
 
@@ -27,7 +27,6 @@ export default class MkdocsPublication extends Plugin {
 		
 		const PublisherManager = new GithubBranch(this.settings, octokit, this.app.vault, this.app.metadataCache, this);
 		const branchName = app.vault.getName() + "-" + new Date().toLocaleDateString('en-US').replace(/\//g, '-');
-
 
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu: Menu, file: TFile) => {
@@ -99,9 +98,13 @@ export default class MkdocsPublication extends Plugin {
 			hotkeys: [],
 			checkCallback: (checking) => {
 				if (this.settings.autoCleanUp) {
-					if (!checking) {
-						deleteUnsharedDeletedNotes(PublisherManager, this.settings, octokit, branchName);
-					}
+					if (!checking)
+						if (this.settings.localFolder === localHost.github) {
+							new Notice((t("startingClean") as StringFunc)(this.settings.githubRepo))
+							deleteUnsharedDeletedNotes(PublisherManager, this.settings, octokit, branchName);
+						} else {
+
+						}
 					return true;
 				}
 				return false;

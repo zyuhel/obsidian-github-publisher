@@ -2,25 +2,22 @@ import {
 	arrayBufferToBase64,
 	MetadataCache,
 	Notice,
-	TFile,
+	TFile, TFolder,
 	Vault
 } from "obsidian";
-import { MkdocsPublicationSettings } from "../settings/interface";
+import {localHost, MkdocsPublicationSettings} from "../settings/interface";
 import { FilesManagement } from "./filesManagement";
 import { Octokit } from "@octokit/core";
 import { Base64 } from "js-base64";
 import {deleteFromGithub} from "./delete"
 
 import {
-	convertDataviewQueries,
-	convertLinkCitation,
-	convertWikilinks,
-	addHardLineBreak
-} from "../src/convertText";
+	convertText
+} from "../convertContents/convertText";
 
 import {
 	getReceiptFolder, getImageLinkOptions
-} from "../src/filePathConvertor";
+} from "../convertContents/filePathConvertor";
 import {ShareStatusBar} from "../src/status_bar";
 import MkdocsPublication from "../main";
 import { noticeLog } from "plugin/src/utils";
@@ -61,9 +58,11 @@ export default class MkdocsPublish {
 				for (const image of linkedFiles) {
 					if ((image.extension === 'md') && !(fileHistory.includes(image)) && deepScan) {
 						fileHistory.push(image);
-						await this.publish(image, false, ref, fileHistory, true);
+						if (this.settings.localFolder === localHost.github) {
+							await this.publishOrLocalMD(image, false, ref, fileHistory, true);
+						}
 					} else {
-						await this.uploadImage(image, ref)
+						await this.publishOrLocalImages(image, ref);
 					}
 					statusBar.increment();
 				}
@@ -72,15 +71,74 @@ export default class MkdocsPublish {
 				const embed = linkedFiles[0];
 				if (embed.extension === 'md' && !(fileHistory.includes(embed)) && deepScan) {
 					fileHistory.push(embed);
-					await this.publish(embed, false, ref, fileHistory, true);
+					await this.publishOrLocalMD(embed, false, ref, fileHistory, true);
 				} else {
-					await this.uploadImage(embed, ref);
+					await this.publishOrLocalImages(embed, ref);
 				}
 			}
 		}
 		return fileHistory;
 	}
 
+	async publishOrLocalMD(
+		file: TFile,
+		autoclean = false,
+		ref = "main",
+		fileHistory:TFile[]=[],
+		deepScan=false) {
+		if (this.settings.localFolder === localHost.github) {
+			await this.publish(file, autoclean, ref, fileHistory, deepScan);
+		} else {
+			await this.publishLocal(file, fileHistory, deepScan);
+		}
+	}
+
+	async publishOrLocalImages(
+		imageFile: TFile,
+		ref = "main") {
+		if (this.settings.localFolder === localHost.github) {
+			await this.uploadImage(imageFile, ref);
+		} else {
+			await this.copyImage(imageFile);
+		}
+	}
+
+	async copyImage(file: TFile) {
+		const path = getImageLinkOptions(file, this.settings);
+		await this.vault.copy(file, path);
+	}
+
+	async publishLocal(file: TFile, fileHistory:TFile[]=[], deepScan=false) {
+		const shareFiles = new FilesManagement(this.vault, this.metadataCache, this.settings, this.octokit, this.plugin);
+		const sharedKey = this.settings.shareKey;
+		const frontmatter = this.metadataCache.getFileCache(file).frontmatter;
+		if (
+			!frontmatter ||
+			!frontmatter[sharedKey] ||
+			shareFiles.checkExcludedFolder(file) ||
+			file.extension !== "md" || fileHistory.includes(file)
+		) {
+			return false;
+		}
+		try {
+			fileHistory.push(file)
+			const embedFiles = shareFiles.getEmbed(file);
+			const linkedFiles = shareFiles.getLinkedImageAndFiles(file);
+			const text = await convertText(file, this.settings, this.vault, this.metadataCache, embedFiles, linkedFiles);
+			const path = getReceiptFolder(file, this.settings, this.metadataCache, this.vault);
+			noticeLog(`Create ${file.name} in ${path}`, this.settings);
+			await this.statusBarForEmbed(embedFiles, fileHistory, 'main', deepScan);
+			const folderExist = this.vault.getAbstractFileByPath(path);
+			if (!folderExist || folderExist instanceof TFolder) {
+				await this.vault.createFolder(path);
+			}
+			await this.vault.create(path + "/" + file.name, text);
+
+		} catch (e) {
+			noticeLog(e, this.settings);
+			return false;
+		}
+	}
 
 	async publish(file: TFile, autoclean = false, ref = "main", fileHistory:TFile[]=[], deepScan=false) {
 		/**
@@ -103,14 +161,10 @@ export default class MkdocsPublish {
 			return false;
 		}
 		try {
-			let text = await this.vault.cachedRead(file);
 			fileHistory.push(file)
 			const embedFiles = shareFiles.getEmbed(file);
 			const linkedFiles = shareFiles.getLinkedImageAndFiles(file);
-			text = await convertDataviewQueries(text, file.path, this.settings, this.vault, this.metadataCache, file);
-			text = addHardLineBreak(text, this.settings);
-			text = convertLinkCitation(text, this.settings, linkedFiles, this.metadataCache, file, this.vault);
-			text = convertWikilinks(text, this.settings, linkedFiles);
+			const text = await convertText(file, this.settings, this.vault, this.metadataCache, embedFiles, linkedFiles);
 			const path = getReceiptFolder(file, this.settings, this.metadataCache, this.vault)
 			noticeLog(`Upload ${file.name}:${path} on ${this.settings.githubName}/${this.settings.githubRepo}:${ref}`, this.settings);
 			await this.uploadText(file.path, text, path, file.name, ref);

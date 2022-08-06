@@ -1,8 +1,9 @@
-import {MkdocsPublicationSettings} from "../settings/interface";
+import {LinkedFiles, MkdocsPublicationSettings} from "../settings/interface";
 import {MetadataCache, TFile, Notice, Vault} from "obsidian";
 import {createRelativePath, getDataviewPath} from "./filePathConvertor";
 import { getAPI } from "obsidian-dataview";
-import { noticeLog } from "./utils";
+import { noticeLog } from "../src/utils";
+import {FilesManagement} from "../publishing/filesManagement";
 
 function addHardLineBreak(text: string, settings: MkdocsPublicationSettings) {
 	try {
@@ -134,5 +135,21 @@ function creatorAltLink(
 	return ''
 }
 
+async function convertText(source:TFile, settings: MkdocsPublicationSettings, vault: Vault, metadataCache: MetadataCache, embedFiles: TFile[], linkedFiles: LinkedFiles[]) {
+	let text = await vault.cachedRead(source)
+	text = await convertDataviewQueries(text, source.path, settings, vault, metadataCache, source);
+	text = addHardLineBreak(text, settings);
+	text = convertLinkCitation(text, settings, linkedFiles, this.metadataCache, source, vault);
+	text = convertWikilinks(text, settings, linkedFiles);
+	return text
 
-export {convertWikilinks, convertLinkCitation, creatorAltLink, convertDataviewQueries, addHardLineBreak};
+}
+
+export {
+	convertWikilinks,
+	convertLinkCitation,
+	creatorAltLink,
+	convertDataviewQueries,
+	addHardLineBreak,
+	convertText
+};
