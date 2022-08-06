@@ -32,7 +32,11 @@ function filterLocalFiles(vault: Vault, filesManagement: FilesManagement, settin
 	return sharedFileInLocal;
 }
 
-export async function deleteFromLocal(settings: MkdocsPublicationSettings, filesManagement: FilesManagement, vault: Vault, metadataCache: MetadataCache) {
+export async function deleteFromLocal(
+	settings: MkdocsPublicationSettings,
+	filesManagement: FilesManagement,
+	vault: Vault, metadataCache: MetadataCache)
+{
 	/**
 	 * Delete files from local folder.
 	 * @class settings
