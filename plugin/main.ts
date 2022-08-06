@@ -3,7 +3,7 @@ import {
 	MkdocsSettingsTab,
 } from "./settings";
 import { disablePublish } from "./src/utils";
-import {MkdocsPublicationSettings, DEFAULT_SETTINGS} from './settings/interface'
+import {MkdocsPublicationSettings, DEFAULT_SETTINGS, localHost} from './settings/interface'
 import {GithubBranch} from "./publishing/branch";
 import { Octokit } from "@octokit/core";
 import {
@@ -12,7 +12,7 @@ import {
 	shareAllMarkedNotes,
 	shareNewNote,
 	shareOneNote, shareOnlyEdited
-} from "./src/commands";
+} from "./commands";
 import t, {StringFunc} from "./i18n"
 
 
@@ -27,7 +27,7 @@ export default class MkdocsPublication extends Plugin {
 		
 		const PublisherManager = new GithubBranch(this.settings, octokit, this.app.vault, this.app.metadataCache, this);
 		const branchName = app.vault.getName() + "-" + new Date().toLocaleDateString('en-US').replace(/\//g, '-');
-
+		const createBranch = this.settings.localFolder === localHost.local ? false : true;
 
 		this.registerEvent(
 			this.app.workspace.on("file-menu", (menu: Menu, file: TFile) => {

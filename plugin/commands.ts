@@ -1,13 +1,13 @@
-import { ShareStatusBar } from "./status_bar";
-import {createLink, noticeMessage} from "./utils";
-import {MkdocsPublicationSettings} from '../settings/interface'
-import { deleteFromGithub } from '../publishing/delete'
-import {GithubBranch} from "../publishing/branch";
+import { ShareStatusBar } from "./src/status_bar";
+import {createLink, noticeLog, noticeMessage} from "./src/utils";
+import {localHost, MkdocsPublicationSettings} from './settings/interface'
+import { deleteFromGithub } from './publishing/delete'
+import {GithubBranch} from "./publishing/branch";
 import { Octokit } from "@octokit/core";
 import {MetadataCache, Notice, TFile, Vault} from "obsidian";
-import MkdocsPublication from "../main";
-import t from '../i18n'
-import type { StringFunc } from "../i18n";
+import MkdocsPublication from "./main";
+import t from './i18n'
+import type { StringFunc } from "./i18n";
 
 
 export async function shareAllMarkedNotes(PublisherManager: GithubBranch, settings: MkdocsPublicationSettings, octokit: Octokit, statusBarItems: HTMLElement, branchName: string, sharedFiles: TFile[], createGithubBranch=true) {
@@ -39,7 +39,7 @@ export async function shareAllMarkedNotes(PublisherManager: GithubBranch, settin
 				try {
 					const file = sharedFiles[files];
 					statusBar.increment();
-					await PublisherManager.publish(file, false, branchName);
+					await PublisherManager.publishOrLocalMD(file, false, branchName);
 				} catch {
 					errorCount++;
 					new Notice(
@@ -49,17 +49,19 @@ export async function shareAllMarkedNotes(PublisherManager: GithubBranch, settin
 			}
 			statusBar.finish(8000);
 			const noticeValue = `${publishedFiles.length - errorCount} notes`
-			await deleteFromGithub(true, settings, octokit, branchName, PublisherManager);
-			const update = await PublisherManager.updateRepository(branchName);
-			if (update) {
-				await noticeMessage(PublisherManager, noticeValue, settings);
-			} else {
-				new Notice((t("errorPublish") as StringFunc)(settings.githubRepo));
-				
+			if (settings.localFolder === localHost.github) {
+				await deleteFromGithub(true, settings, octokit, branchName, PublisherManager);
+				const update = await PublisherManager.updateRepository(branchName);
+				if (update) {
+					await noticeMessage(PublisherManager, noticeValue, settings);
+				} else {
+					new Notice((t("errorPublish") as StringFunc)(settings.githubRepo));
+
+				}
 			}
 		}
 	} catch (error) {
-		console.error(error);
+		noticeLog(error, settings);
 		new Notice(
 			t("unablePublishMultiNotes") as string
 		);

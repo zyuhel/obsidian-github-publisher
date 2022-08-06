@@ -1,11 +1,67 @@
 import { Octokit } from "@octokit/core";
-import { Notice } from "obsidian";
-import {folderSettings, MkdocsPublicationSettings} from "../settings/interface";
+import {Notice, Vault} from "obsidian";
+import {folderSettings, GithubShared, MkdocsPublicationSettings} from "../settings/interface";
 import { FilesManagement } from "./filesManagement";
 import {Base64} from "js-base64";
 import {noticeLog, trimObject} from "../src/utils";
 
-export async function deleteFromGithub(silent = false, settings: MkdocsPublicationSettings, octokit: Octokit, branchName='main', filesManagement: FilesManagement) {
+function filterLocalFiles(vault: Vault, filesManagement: FilesManagement, settings: MkdocsPublicationSettings) {
+	const localShared = filesManagement.getFileFromLocal(settings)
+	const sharedFileInLocal = [];
+	for (const file of localShared) {
+		if (
+			(settings.downloadedFolder === folderSettings.yaml &&
+				settings.rootFolder.length === 0) ||
+			settings.folderDefaultName.length === 0
+		) {
+			return [];
+		}
+		if (
+			(file.path.includes(settings.folderDefaultName) ||
+			(settings.downloadedFolder === folderSettings.yaml &&
+				file.path.includes(settings.rootFolder)) ||
+			(settings.defaultImageFolder.length > 0 &&
+				file.path.includes(settings.defaultImageFolder)))
+			&&
+			!excludedFileFromDelete(file.path, settings) &&
+			file.path.match(/(md|jpe?g|png|gif|bmp|svg|mp3|webm|wav|m4a|ogg|3gp|flac|mp4|ogv|pdf)$/)
+		) {
+			sharedFileInLocal.push(file);
+		}
+	}
+	return sharedFileInLocal;
+}
+
+function deleteFromLocal(settings: MkdocsPublicationSettings, filesManagement: FilesManagement, vault: Vault) {
+	/**
+	 * Delete files from local folder.
+	 * @class settings
+	 * @class filesManagement
+	 * @class vault
+	 */
+	const localShared = filterLocalFiles(vault, filesManagement, settings);
+	if (localShared.length > 0) {
+		const allShared = filesManagement.getAllFileWithPath();
+		const allSharedConverted= allShared.map(file => { return file.converted; });
+		let deletedSuccess = 0;
+		let deletedFailed = 0;
+		for (const file of localShared) {
+			if (!allSharedConverted.includes(file.path.trim())) {
+				if (file.name == 'index.md')
+				{
+
+				}
+			}
+		}
+	}
+}
+
+export async function deleteFromGithub(
+	silent = false,
+	settings: MkdocsPublicationSettings,
+	octokit: Octokit,
+	branchName='main',
+	filesManagement: FilesManagement) {
 	/**
 	 * Delete file from github
 	 * @param silent no logging
@@ -102,7 +158,9 @@ function excludedFileFromDelete(file: string, settings: MkdocsPublicationSetting
 	return false;
 }
 
-export async function filterGithubFile(fileInRepo: { file: string; sha: string }[], settings: MkdocsPublicationSettings) {
+export async function filterGithubFile(
+	fileInRepo: GithubShared[],
+	settings: MkdocsPublicationSettings) {
 	/**
 	 * Scan all file in repo, and excluding some from the list. Also check for some parameters.
 	 * Only file supported by GitHub are checked.

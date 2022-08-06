@@ -13,6 +13,8 @@ export default {
 	/* ------------ *
 	 *	 Settings   *
 	 * ------------ */
+	exportingSettings: "Host configuration",
+	exportingDesc: "Use a local folder or GitHub to host your blog.",
 	githubConfiguration: "Github Configuration",
 	repoName: "Repo Name",
 	repoNameDesc: "The name of the repository where you store your blog.",

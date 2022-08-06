@@ -1,9 +1,9 @@
 // Credit : https://github.com/oleeskild/obsidian-digital-garden @oleeskild
 
 import {MetadataCache, TFile, Vault} from "obsidian";
-import {MkdocsPublicationSettings} from "../settings/interface";
+import {AllFilePath, GithubShared, LinkedFiles, MkdocsPublicationSettings} from "../settings/interface";
 import {Octokit} from "@octokit/core";
-import {getImageLinkOptions, getReceiptFolder} from "../src/filePathConvertor";
+import {getImageLinkOptions, getReceiptFolder} from "../convertContents/filePathConvertor";
 import MkdocsPublish from "./upload";
 import MkdocsPublication from "../main";
 import { noticeLog } from "plugin/src/utils";
@@ -14,7 +14,7 @@ export class FilesManagement extends MkdocsPublish {
 	settings: MkdocsPublicationSettings;
 	octokit: Octokit;
 	plugin: MkdocsPublication
-	
+
 	constructor(
 		vault: Vault,
 		metadataCache: MetadataCache,
@@ -29,7 +29,7 @@ export class FilesManagement extends MkdocsPublish {
 		this.octokit = octokit;
 		this.plugin = plugin;
 	}
-	
+
 	getSharedFiles(): TFile[] {
 		const files = this.vault.getMarkdownFiles();
 		const shared_File: TFile[] = [];
@@ -46,8 +46,8 @@ export class FilesManagement extends MkdocsPublish {
 		}
 		return shared_File;
 	}
-	
-	getAllFileWithPath() {
+
+	getAllFileWithPath(): AllFilePath[] {
 		const files = this.vault.getFiles();
 		const allFileWithPath = [];
 		const shareKey = this.settings.shareKey;
@@ -74,10 +74,10 @@ export class FilesManagement extends MkdocsPublish {
 		}
 		return allFileWithPath;
 	}
-	
-	getLinkedImageAndFiles(file: TFile) {
+
+	getLinkedImageAndFiles(file: TFile): LinkedFiles[] {
 		/**
-		 * Create a database with every internal links and embeded image and files 
+		 * Create a database with every internal links and embeded image and files
 		 * @param file: the source file
 		 * @return linkedFiles: array of linked files
 		 */
@@ -103,8 +103,8 @@ export class FilesManagement extends MkdocsPublish {
 		}
 		return linkedFiles;
 	}
-	
-	getEmbedFiles(file: TFile): { linked: TFile, linkFrom: string, altText: string }[] {
+
+	getEmbedFiles(file: TFile): LinkedFiles[] {
 		/**
 		 * Create an objet of all files embedded in the shared files
 		 * @param file: The file shared
@@ -138,8 +138,8 @@ export class FilesManagement extends MkdocsPublish {
 		return [];
 	}
 
-	
-	getEmbed(file: TFile) {
+
+	getEmbed(file: TFile): TFile[] {
 		const embedCaches = this.metadataCache.getCache(file.path).embeds;
 		const imageList = [];
 		if (embedCaches != undefined) {
@@ -170,7 +170,7 @@ export class FilesManagement extends MkdocsPublish {
 		}
 		return [];
 	}
-	
+
 	checkExcludedFolder(file: TFile) {
 		const excludedFolder = this.settings.ExcludedFolder.split(",").filter(
 			(x) => x != ""
@@ -184,7 +184,7 @@ export class FilesManagement extends MkdocsPublish {
 		}
 		return false;
 	}
-	
+
 	async getLastEditedTimeRepo(octokit: Octokit, githubRepo: {file: string, sha: string}, settings: MkdocsPublicationSettings) {
 		const commits = await octokit.request('GET /repos/{owner}/{repo}/commits', {
 			owner: settings.githubName,
@@ -194,8 +194,20 @@ export class FilesManagement extends MkdocsPublish {
 		const lastCommittedFile = commits.data[0];
 		return new Date(lastCommittedFile.commit.committer.date);
 	}
+
+	getFileFromLocal(settings: MkdocsPublicationSettings){
+		const fileInLocal = []
+		const allFile = this.vault.getFiles();
+		for (const file of allFile) {
+			if (file.path.contains(settings.rootFolder)) {
+				fileInLocal.push(file);
+			}
+		}
+		return fileInLocal;
+	}
+
 	
-	async getAllFileFromRepo(ref = "main", octokit: Octokit, settings: MkdocsPublicationSettings) {
+	async getAllFileFromRepo(ref = "main", octokit: Octokit, settings: MkdocsPublicationSettings): Promise<GithubShared[]> {
 		const filesInRepo = [];
 		try {
 			const repoContents = await octokit.request(
@@ -231,7 +243,7 @@ export class FilesManagement extends MkdocsPublish {
 		return filesInRepo;
 	}
 	
-	getNewFiles(allFileWithPath:{converted: string, real: string}[] , githubSharedFiles: { file: string, sha: string }[], vault: Vault): TFile[] {
+	getNewFiles(allFileWithPath:AllFilePath[] , githubSharedFiles: GithubShared[], vault: Vault): TFile[] {
 		const newFiles = []; //new file : present in allFileswithPath but not in githubSharedFiles
 		
 		for (const file of allFileWithPath) {
