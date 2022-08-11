@@ -1,3 +1,10 @@
+/* ---- This is needed because in russian language numbers change how next words read ---- */
+function numberDecline (nb: string, values: string) {
+	let valuesArray = values.explode(',')
+	let number = parseInt(nb)
+	let cases = array (2, 0, 1, 1, 1, 2);
+    return valuesArray[ (number%100>4 && number%100<20)? 2 : cases[Math.min(number%10, 5)] ];
+}
 export default {
 	/* ------------ *
 	 *	 Commands   *
@@ -12,8 +19,8 @@ export default {
 	/* ------ Delete string -----	*/
 	errorDeleteDefaultFolder: "Вы должны указать название папки по умолчанию в настройках, чтобы воспользоваться этой командой.",
 	errorDeleteRootFolder: 'Вы должны указать корневую папку в настройках, чтобы воспользоваться этой командой.',
-	successDeleting:(nb:string): string => `Успешно удалено ${nb} файлов.`,
-	failedDeleting:(nb:string): string => `Неудалось удалить ${nb} файлов.`,
+	successDeleting:(nb:string): string => `Успешно удалено ${nb} ` + numberDecline(${nb}, 'файл,файла,файлов') + '.',
+	failedDeleting:(nb:string): string => `Неудалось удалить ${nb} ` + numberDecline(${nb}, 'файл,файла,файлов') + '.',
 	noFileDeleted: 'Файлы не были удалены.',
 
 	/* ------------ *
@@ -115,7 +122,7 @@ export default {
 	unablePublishMultiNotes: "Не получилось опубликовать несколько заметок, что-то пошло не так.",
 	startingClean: (repoInfo: string): string => `Начинаю очистку ${repoInfo}`,
 	scanningRepo: "Сканирую репозиторий, это может занять какое-то время...",
-	foundNoteToSend: (noteLength: string)=> `Найдено ${noteLength} заметок для отправки`,
+	foundNoteToSend: (noteLength: string)=> numberDecline(${noteLength}, 'Найдена,Найдено,Найдено') + ` ${noteLength} ` + numberDecline(${noteLength}, 'заметка,заметки,заметок') + ` для отправки`,
 	noNewNote: "Отсутствуют новые заметки для публикации.",
 	successfullPublish:(noticeValue: string[])=>`Успешно опубликовано ${noticeValue[0]} в ${noticeValue[1]}.`,
 	waitingWorkflow: "Ожидаю завершения процесса обработки...",
